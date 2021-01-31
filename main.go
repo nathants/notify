@@ -11,6 +11,8 @@ import (
 	"github.com/alexflint/go-arg"
 )
 
+const maxWidthPercent = .5
+
 func tryLoadFont() {
 	font := os.Getenv("NOTIFY_TTF_FONT")
 	if font == "" {
@@ -37,15 +39,47 @@ func keypress(start time.Time, delay time.Duration, prompt bool) {
 	}
 }
 
+func width(s string) float32 {
+	width, _ := giu.CalcTextSize(s)
+	return width
+}
+
+func height(s string) float32 {
+	_, height := giu.CalcTextSize(s)
+	return height
+}
+
+func wrap(s string, windowWidth float32) string {
+	wrapped := ""
+	parts := strings.Split(s, " ")
+	line := ""
+	for {
+		if len(parts) == 0 {
+			break
+		}
+		if width(line+parts[0]) > windowWidth*maxWidthPercent {
+			wrapped += "\n" + line
+			line = ""
+		}
+		line += " " + parts[0]
+		parts = parts[1:]
+	}
+	if line != "" {
+		wrapped += "\n" + line
+	}
+	return wrapped
+}
+
 func loop(start time.Time, delay time.Duration, message string, prompt bool, windowWidth, windowHeight float32) {
-	_, textHeight := giu.CalcTextSize(message)
+	if width(message) > windowWidth*maxWidthPercent {
+		message = wrap(message, windowWidth)
+	}
 	layout := giu.Layout{
 		giu.Custom(func() { keypress(start, delay, prompt) }),
-		giu.Dummy(0, (windowHeight-textHeight)/2),
+		giu.Dummy(0, (windowHeight-height(message))/2),
 	}
 	for _, line := range strings.Split(message, "\n") {
-		textWidth, _ := giu.CalcTextSize(line)
-		layout = append(layout, giu.Line(giu.Dummy((windowWidth-textWidth)/2, 0), giu.Label(line)))
+		layout = append(layout, giu.Line(giu.Dummy((windowWidth-width(line))/2, 0), giu.Label(line)))
 	}
 	giu.SingleWindow("notify").Layout(layout)
 }
