@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"regexp"
 
 	"github.com/AllenDang/giu"
 	"github.com/AllenDang/giu/imgui"
@@ -51,7 +52,7 @@ func height(s string) float32 {
 
 func wrap(s string, windowWidth float32) string {
 	wrapped := ""
-	parts := strings.Split(s, " ")
+	parts := regexp.MustCompile(" +").Split(s, -1)
 	line := ""
 	for {
 		if len(parts) == 0 {
