@@ -52,7 +52,7 @@ func height(s string) float32 {
 
 func wrap(s string, windowWidth float32) string {
 	wrapped := ""
-	parts := regexp.MustCompile(" +").Split(s, -1)
+	parts := strings.Split(s, " ")
 	line := ""
 	for {
 		if len(parts) == 0 {
@@ -80,6 +80,7 @@ func loop(start time.Time, delay time.Duration, message string, prompt bool, win
 		giu.Dummy(0, (windowHeight-height(message))/2),
 	}
 	for _, line := range strings.Split(message, "\n") {
+		line = strings.Trim(line, " ")
 		layout = append(layout, giu.Line(giu.Dummy((windowWidth-width(line))/2, 0), giu.Label(line)))
 	}
 	giu.SingleWindow("notify").Layout(layout)
@@ -99,6 +100,7 @@ func main() {
 	var args Args
 	arg.MustParse(&args)
 	args.Message = strings.Replace(args.Message, "\\n", "\n", -1)
+	args.Message = regexp.MustCompile(`\s+`).ReplaceAllString(args.Message, " ")
 	if args.Prompt {
 		args.Message += "\n\nproceed? y/n"
 	}
