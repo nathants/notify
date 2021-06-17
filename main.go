@@ -4,15 +4,14 @@ import (
 	"os"
 	"strings"
 	"time"
-	"regexp"
 
 	"github.com/AllenDang/giu"
-	"github.com/AllenDang/giu/imgui"
 	"github.com/AllenDang/go-findfont"
+	"github.com/AllenDang/imgui-go"
 	"github.com/alexflint/go-arg"
 )
 
-const maxWidthPercent = .5
+const maxWidthPercent = .9
 
 func tryLoadFont() {
 	font := os.Getenv("NOTIFY_TTF_FONT")
@@ -71,17 +70,45 @@ func wrap(s string, windowWidth float32) string {
 	return wrapped
 }
 
-func loop(start time.Time, delay time.Duration, message string, prompt bool, windowWidth, windowHeight float32) {
+func max(a, b float32) float32 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func loop(start time.Time, delay time.Duration, message string, prompt bool, windowWidth, windowHeight float32, center bool) {
 	if width(message) > windowWidth*maxWidthPercent {
 		message = wrap(message, windowWidth)
 	}
+	heightOffset := float32(0)
+	if height(message)*2 < windowWidth {
+		heightOffset = (windowHeight - height(message)) / 2
+	}
 	layout := giu.Layout{
 		giu.Custom(func() { keypress(start, delay, prompt) }),
-		giu.Dummy(0, (windowHeight-height(message))/2),
+		giu.Dummy(0, heightOffset),
 	}
-	for _, line := range strings.Split(message, "\n") {
-		line = strings.Trim(line, " ")
-		layout = append(layout, giu.Line(giu.Dummy((windowWidth-width(line))/2, 0), giu.Label(line)))
+	if center {
+		for _, line := range strings.Split(message, "\n") {
+			line = strings.Trim(line, " ")
+			layout = append(layout, giu.Row(
+				giu.Dummy((windowWidth-width(line))/2, 0),
+				giu.Label(line)),
+			)
+		}
+	} else {
+		maxWidth := float32(0)
+		for _, line := range strings.Split(message, "\n") {
+			maxWidth = max(maxWidth, width(line))
+		}
+		for _, line := range strings.Split(message, "\n") {
+			line = strings.Trim(line, " ")
+			layout = append(layout, giu.Row(
+				giu.Dummy((windowWidth-maxWidth)/2, 0),
+				giu.Label(line)),
+			)
+		}
 	}
 	giu.SingleWindow("notify").Layout(layout)
 }
@@ -90,6 +117,7 @@ type Args struct {
 	Message      string  `arg:"positional" help:"the message to display on screen"`
 	Prompt       bool    `arg:"-p,--prompt" help:"prompt the user for a y/n response, and exit 0/1 accordingly"`
 	DelaySeconds float32 `arg:"-d,--delay-seconds" help:"delay seconds before accepting user input for prompted y/n"`
+	Center       bool    `arg:"-c,--center" help:"horizontally center each line"`
 }
 
 func (Args) Description() string {
@@ -100,7 +128,6 @@ func main() {
 	var args Args
 	arg.MustParse(&args)
 	args.Message = strings.Replace(args.Message, "\\n", "\n", -1)
-	args.Message = regexp.MustCompile(`\s+`).ReplaceAllString(args.Message, " ")
 	if args.Prompt {
 		args.Message += "\n\nproceed? y/n"
 	}
@@ -109,6 +136,6 @@ func main() {
 	start := time.Now()
 	delay := time.Duration(int64(args.DelaySeconds*1000)) * time.Millisecond
 	wnd.Run(func() {
-		loop(start, delay, args.Message, args.Prompt, float32(windowWidth), float32(windowHeight))
+		loop(start, delay, args.Message, args.Prompt, float32(windowWidth), float32(windowHeight), args.Center)
 	})
 }
