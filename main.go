@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strconv"
 	"os"
 	"strings"
 	"time"
@@ -20,9 +21,18 @@ func tryLoadFont() {
 	}
 	fonts := giu.Context.IO().Fonts()
 	fontPath, err := findfont.Find(font)
-	if err == nil {
-		fonts.AddFontFromFileTTFV(fontPath, 24, imgui.DefaultFontConfig, fonts.GlyphRangesDefault())
+	if err != nil {
+	    return
 	}
+	sizeStr := os.Getenv("NOTIFY_SIZE_FONT")
+	if sizeStr == "" {
+		sizeStr = "32"
+	}
+	size, err := strconv.Atoi(sizeStr)
+	if err != nil {
+	    size = 32
+	}
+	fonts.AddFontFromFileTTFV(fontPath, float32(size), imgui.DefaultFontConfig, fonts.GlyphRangesDefault())
 }
 
 func keypress(start time.Time, delay time.Duration, prompt bool) {
