@@ -1,28 +1,28 @@
 package main
 
 import (
-	"strconv"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/AllenDang/giu"
 	"github.com/AllenDang/go-findfont"
-	"github.com/AllenDang/imgui-go"
 	"github.com/alexflint/go-arg"
 )
 
 const maxWidthPercent = .9
 
+var font *giu.FontInfo
+
 func tryLoadFont() {
-	font := os.Getenv("NOTIFY_TTF_FONT")
-	if font == "" {
-		font = "Inconsolata-Medium.ttf"
+	fontName := os.Getenv("NOTIFY_TTF_FONT")
+	if fontName == "" {
+		fontName = "Inconsolata-Medium.ttf"
 	}
-	fonts := giu.Context.IO().Fonts()
-	fontPath, err := findfont.Find(font)
+	fontPath, err := findfont.Find(fontName)
 	if err != nil {
-	    return
+		panic(err)
 	}
 	sizeStr := os.Getenv("NOTIFY_SIZE_FONT")
 	if sizeStr == "" {
@@ -30,9 +30,13 @@ func tryLoadFont() {
 	}
 	size, err := strconv.Atoi(sizeStr)
 	if err != nil {
-	    size = 32
+		size = 32
 	}
-	fonts.AddFontFromFileTTFV(fontPath, float32(size), imgui.DefaultFontConfig, fonts.GlyphRangesDefault())
+	data, err := os.ReadFile(fontPath)
+	if err != nil {
+		panic(err)
+	}
+	font = giu.AddFontFromBytes(fontName, data, float32(size))
 }
 
 func keypress(start time.Time, delay time.Duration, prompt bool) {
@@ -80,14 +84,8 @@ func wrap(s string, windowWidth float32) string {
 	return wrapped
 }
 
-func max(a, b float32) float32 {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func loop(start time.Time, delay time.Duration, message string, prompt bool, windowWidth, windowHeight float32, center bool) {
+func loop(start time.Time, delay time.Duration, message string, prompt bool, windowWidth, windowHeight float32) {
+	message = message + "\n"
 	if width(message) > windowWidth*maxWidthPercent {
 		message = wrap(message, windowWidth)
 	}
@@ -99,34 +97,19 @@ func loop(start time.Time, delay time.Duration, message string, prompt bool, win
 		giu.Custom(func() { keypress(start, delay, prompt) }),
 		giu.Dummy(0, heightOffset),
 	}
-	if center {
-		for _, line := range strings.Split(message, "\n") {
-			line = strings.Trim(line, " ")
-			layout = append(layout, giu.Row(
-				giu.Dummy((windowWidth-width(line))/2, 0),
-				giu.Label(line)),
-			)
-		}
-	} else {
-		maxWidth := float32(0)
-		for _, line := range strings.Split(message, "\n") {
-			maxWidth = max(maxWidth, width(line))
-		}
-		for _, line := range strings.Split(message, "\n") {
-			line = strings.Trim(line, " ")
-			layout = append(layout, giu.Row(
-				giu.Dummy((windowWidth-maxWidth)/2, 0),
-				giu.Label(line)),
-			)
-		}
+	for _, line := range strings.Split(message, "\n") {
+		line = strings.Trim(line, " ")
+		layout = append(layout, giu.Row(
+			giu.Align(giu.AlignCenter).To(giu.Style().SetFont(font).To(giu.Label(line))),
+		))
 	}
-	giu.SingleWindow("notify").Layout(layout)
+	giu.SingleWindow().Layout(layout)
 }
 
 type Args struct {
 	Message      string  `arg:"positional" help:"the message to display on screen"`
 	Prompt       bool    `arg:"-p,--prompt" help:"prompt the user for a y/n response, and exit 0/1 accordingly"`
-	DelaySeconds float32 `arg:"-d,--delay-seconds" help:"delay seconds before accepting user input for prompted y/n"`
+	DelaySeconds float32 `arg:"-d,--delay-seconds" help:"delay seconds before accepting user input for prompted y/n" default:"1"`
 	Center       bool    `arg:"-c,--center" help:"horizontally center each line"`
 }
 
@@ -141,11 +124,35 @@ func main() {
 	if args.Prompt {
 		args.Message += "\n\nproceed? y/n"
 	}
-	wnd := giu.NewMasterWindow("notify", 400, 200, giu.MasterWindowFlagsMaximized, tryLoadFont)
+	tryLoadFont()
+	wnd := giu.NewMasterWindow("notify", 400, 200, giu.MasterWindowFlagsMaximized)
 	windowWidth, windowHeight := wnd.GetSize()
 	start := time.Now()
 	delay := time.Duration(int64(args.DelaySeconds*1000)) * time.Millisecond
+	message := args.Message + "\n\n"
+	go func() {
+		for {
+			message = args.Message + "\n\n"
+			delaySeconds := delay.Seconds()
+			elapsed := time.Since(start).Seconds()
+			if elapsed > delaySeconds {
+				elapsed = delaySeconds
+			}
+			remaining := delay.Seconds() - elapsed
+			if remaining < 0 {
+				remaining = 0
+			}
+			for i := float64(0); i < elapsed; i += .025 {
+				message += " "
+			}
+			for i := float64(0); i < remaining; i += .025 {
+				message += "="
+			}
+			giu.Update()
+			time.Sleep(100 * time.Millisecond)
+		}
+	}()
 	wnd.Run(func() {
-		loop(start, delay, args.Message, args.Prompt, float32(windowWidth), float32(windowHeight), args.Center)
+		loop(start, delay, message, args.Prompt, float32(windowWidth), float32(windowHeight))
 	})
 }
