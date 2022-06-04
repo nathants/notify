@@ -110,7 +110,6 @@ type Args struct {
 	Message      string  `arg:"positional" help:"the message to display on screen"`
 	Prompt       bool    `arg:"-p,--prompt" help:"prompt the user for a y/n response, and exit 0/1 accordingly"`
 	DelaySeconds float32 `arg:"-d,--delay-seconds" help:"delay seconds before accepting user input for prompted y/n" default:"1"`
-	Center       bool    `arg:"-c,--center" help:"horizontally center each line"`
 }
 
 func (Args) Description() string {
