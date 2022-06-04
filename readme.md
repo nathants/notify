@@ -12,9 +12,9 @@ optionally includes a y/n prompt which will change the exit code.
 
 a delay before the prompt is answerable avoids accidental input.
 
-## example
+## demo
 
-![](https://github.com/nathants/notify/raw/master/example.gif)
+![](https://github.com/nathants/notify/raw/master/demo.gif)
 
 ## install
 
