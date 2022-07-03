@@ -37,6 +37,7 @@ func tryLoadFont() {
 		panic(err)
 	}
 	font = giu.AddFontFromBytes(fontName, data, float32(size))
+	giu.SetDefaultFontSize(float32(size))
 }
 
 func keypress(start time.Time, delay time.Duration, prompt bool) {
@@ -89,18 +90,16 @@ func loop(start time.Time, delay time.Duration, message string, prompt bool, win
 	if width(message) > windowWidth*maxWidthPercent {
 		message = wrap(message, windowWidth)
 	}
-	heightOffset := float32(0)
-	if height(message)*2 < windowWidth {
-		heightOffset = (windowHeight - height(message)) / 2
-	}
+	heightOffset := float32(windowHeight - height(message)) / 2
 	layout := giu.Layout{
 		giu.Custom(func() { keypress(start, delay, prompt) }),
 		giu.Dummy(0, heightOffset),
 	}
 	for _, line := range strings.Split(message, "\n") {
 		line = strings.Trim(line, " ")
+		label := giu.Style().SetFont(font).To(giu.Label(line))
 		layout = append(layout, giu.Row(
-			giu.Align(giu.AlignCenter).To(giu.Style().SetFont(font).To(giu.Label(line))),
+			giu.Align(giu.AlignCenter).To(label),
 		))
 	}
 	giu.SingleWindow().Layout(layout)
