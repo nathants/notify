@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+# type: ignore
+import time
+import argh
+import blessed
+import sys
+import termios
+import tty
+
+def getch():
+    fd = sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    try:
+        tty.setraw(fd)
+        val = sys.stdin.read(1).lower()
+        if val == '\x03':
+            sys.exit(1)
+        else:
+            return val
+    except KeyboardInterrupt:
+        sys.exit(1)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+
+def main(msg: 'message to display',
+         delay: 'delay seconds before accepting user input for prompt' = .5,
+         prompt: 'prompt the user y/n then exit 0/1' = False):
+    """
+    notify the user of a message with a fullscreen popup. hit any key to exit.
+    """
+    msg = msg.replace('\\n', '\n')
+    if prompt:
+        msg += '\n\ny/n\n\n'
+    t = blessed.Terminal()
+    start = time.monotonic()
+    with t.fullscreen(), t.hidden_cursor():
+        while True:
+            print(t.move_xy(0, 0) + t.clear)
+            print(t.move(t.height // 2 - len(msg.splitlines())))
+            for i, line in enumerate(msg.splitlines()):
+                print(t.move_right(t.width // 2 - len(line) // 2) + line)
+            elapsed = time.monotonic() - start
+            if prompt:
+                if delay != 0 and elapsed < delay:
+                    progress = 1 - (min(elapsed, delay) / delay)
+                    pmsg = '=' * int(progress * 40)
+                    print(t.move_right(t.width // 2 - len(pmsg) // 2) + pmsg)
+                    time.sleep(.05)
+                else:
+                    if getch() == 'y':
+                        sys.exit(0)
+                    sys.exit(1)
+            else:
+                getch()
+
+if __name__ == '__main__':
+    argh.dispatch_command(main)
