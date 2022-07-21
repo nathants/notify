@@ -52,6 +52,7 @@ def main(msg: 'message to display',
                     sys.exit(1)
             else:
                 getch()
+                sys.exit(0)
 
 if __name__ == '__main__':
     argh.dispatch_command(main)
