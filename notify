@@ -6,17 +6,24 @@ import blessed
 import sys
 import termios
 import tty
+import contextlib
+import threading
+import queue
 
-def getch():
+def getch(q):
+    val = sys.stdin.read(1).lower()
+    if val == '\x03':
+        sys.exit(1)
+    else:
+        q.put(val)
+
+@contextlib.contextmanager
+def raw():
     fd = sys.stdin.fileno()
     old = termios.tcgetattr(fd)
     try:
         tty.setraw(fd)
-        val = sys.stdin.read(1).lower()
-        if val == '\x03':
-            sys.exit(1)
-        else:
-            return val
+        yield
     except KeyboardInterrupt:
         sys.exit(1)
     finally:
@@ -28,6 +35,10 @@ def main(msg: 'message to display',
     """
     notify the user of a message with a fullscreen popup. hit any key to exit.
     """
+    q = queue.Queue()
+    t = threading.Thread(target=getch, args=[q])
+    t.daemon = True
+    t.start()
     msg = msg.replace('\\n', '\n')
     if prompt:
         msg += '\n\ny/n\n\n'
@@ -35,24 +46,33 @@ def main(msg: 'message to display',
     start = time.monotonic()
     with t.fullscreen(), t.hidden_cursor():
         while True:
-            print(t.move_xy(0, 0) + t.clear)
-            print(t.move(t.height // 2 - len(msg.splitlines())))
+            print(t.move_xy(0, 0))
+            print(t.clear)
+            y = t.height // 2 - len(msg.splitlines())
             for i, line in enumerate(msg.splitlines()):
-                print(t.move_right(t.width // 2 - len(line) // 2) + line)
+                print(t.move_xy(t.width // 2 - len(line) // 2, y) + line)
+                y += 1
             elapsed = time.monotonic() - start
             if prompt:
                 if delay != 0 and elapsed < delay:
                     progress = 1 - (min(elapsed, delay) / delay)
                     pmsg = '=' * int(progress * 40)
-                    print(t.move_right(t.width // 2 - len(pmsg) // 2) + pmsg)
-                    time.sleep(.05)
+                    print(t.move_xy(t.width // 2 - len(pmsg) // 2, y) + pmsg)
+                    time.sleep(.01)
                 else:
-                    if getch() == 'y':
-                        sys.exit(0)
-                    sys.exit(1)
+                    try:
+                        if q.get_nowait() == 'y':
+                            sys.exit(0)
+                        sys.exit(1)
+                    except queue.Empty:
+                        time.sleep(.01)
             else:
-                getch()
-                sys.exit(0)
+                try:
+                    getch()
+                    sys.exit(0)
+                except queue.Empty:
+                    time.sleep(.01)
 
 if __name__ == '__main__':
-    argh.dispatch_command(main)
+    with raw():
+        argh.dispatch_command(main)
