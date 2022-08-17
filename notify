@@ -30,7 +30,7 @@ def raw():
         termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
 def main(msg: 'message to display',
-         delay: 'delay seconds before accepting user input for prompt' = .5,
+         delay: 'delay seconds before accepting user input for prompt' = .35,
          prompt: 'prompt the user y/n then exit 0/1' = False):
     """
     notify the user of a message with a fullscreen popup. hit any key to exit.
