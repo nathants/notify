@@ -68,7 +68,7 @@ def main(msg: 'message to display',
                         time.sleep(.01)
             else:
                 try:
-                    getch()
+                    q.get_nowait()
                     sys.exit(0)
                 except queue.Empty:
                     time.sleep(.01)
