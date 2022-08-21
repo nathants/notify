@@ -11,11 +11,12 @@ import threading
 import queue
 
 def getch(q):
-    val = sys.stdin.read(1).lower()
-    if val == '\x03':
-        sys.exit(1)
-    else:
-        q.put(val)
+    while True:
+        val = sys.stdin.read(1).lower()
+        if val == '\x03':
+            sys.exit(1)
+        else:
+            q.put(val)
 
 @contextlib.contextmanager
 def raw():
