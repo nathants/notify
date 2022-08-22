@@ -60,6 +60,11 @@ def main(msg: 'message to display',
                     pmsg = '=' * int(progress * 40)
                     print(t.move_xy(t.width // 2 - len(pmsg) // 2, y) + pmsg)
                     time.sleep(.01)
+                    while True:
+                        try:
+                            q.get_nowait() # drain input queue while delayed
+                        except queue.Empty:
+                            break
                 else:
                     try:
                         if q.get_nowait() == 'y':
