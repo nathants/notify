@@ -36,49 +36,49 @@ def main(msg: 'message to display',
     """
     notify the user of a message with a fullscreen popup. hit any key to exit.
     """
-    q = queue.Queue()
-    t = threading.Thread(target=getch, args=[q])
-    t.daemon = True
-    t.start()
-    msg = msg.replace('\\n', '\n')
-    if prompt:
-        msg += '\n\ny/n\n\n'
-    t = blessed.Terminal()
-    start = time.monotonic()
-    with t.fullscreen(), t.hidden_cursor():
-        while True:
-            print(t.move_xy(0, 0))
-            print(t.clear)
-            y = t.height // 2 - len(msg.splitlines())
-            for i, line in enumerate(msg.splitlines()):
-                print(t.move_xy(t.width // 2 - len(line) // 2, y) + line)
-                y += 1
-            elapsed = time.monotonic() - start
-            if prompt:
-                if delay != 0 and elapsed < delay:
-                    progress = 1 - (min(elapsed, delay) / delay)
-                    pmsg = '=' * int(progress * 40)
-                    print(t.move_xy(t.width // 2 - len(pmsg) // 2, y) + pmsg)
-                    time.sleep(.01)
-                    while True:
+    with raw():
+        q = queue.Queue()
+        t = threading.Thread(target=getch, args=[q])
+        t.daemon = True
+        t.start()
+        msg = msg.replace('\\n', '\n')
+        if prompt:
+            msg += '\n\ny/n\n\n'
+        t = blessed.Terminal()
+        start = time.monotonic()
+        with t.fullscreen(), t.hidden_cursor():
+            while True:
+                print(t.move_xy(0, 0))
+                print(t.clear)
+                y = t.height // 2 - len(msg.splitlines())
+                for i, line in enumerate(msg.splitlines()):
+                    print(t.move_xy(t.width // 2 - len(line) // 2, y) + line)
+                    y += 1
+                elapsed = time.monotonic() - start
+                if prompt:
+                    if delay != 0 and elapsed < delay:
+                        progress = 1 - (min(elapsed, delay) / delay)
+                        pmsg = '=' * int(progress * 40)
+                        print(t.move_xy(t.width // 2 - len(pmsg) // 2, y) + pmsg)
+                        time.sleep(.01)
+                        while True:
+                            try:
+                                q.get_nowait() # drain input queue while delayed
+                            except queue.Empty:
+                                break
+                    else:
                         try:
-                            q.get_nowait() # drain input queue while delayed
+                            if q.get_nowait() == 'y':
+                                sys.exit(0)
+                            sys.exit(1)
                         except queue.Empty:
-                            break
+                            time.sleep(.01)
                 else:
                     try:
-                        if q.get_nowait() == 'y':
-                            sys.exit(0)
-                        sys.exit(1)
+                        q.get_nowait()
+                        sys.exit(0)
                     except queue.Empty:
                         time.sleep(.01)
-            else:
-                try:
-                    q.get_nowait()
-                    sys.exit(0)
-                except queue.Empty:
-                    time.sleep(.01)
 
 if __name__ == '__main__':
-    with raw():
-        argh.dispatch_command(main)
+    argh.dispatch_command(main)
