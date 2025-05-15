@@ -46,7 +46,7 @@ def main(msg: 'message to display',
             msg += '\n\ny/n\n\n'
         t = blessed.Terminal()
         start = time.monotonic()
-        with t.fullscreen(), t.hidden_cursor():
+        with t.fullscreen():
             while True:
                 print(t.move_xy(0, 0))
                 print(t.clear)
@@ -54,6 +54,7 @@ def main(msg: 'message to display',
                 for i, line in enumerate(msg.splitlines()):
                     print(t.move_xy(t.width // 2 - len(line) // 2, y) + line)
                     y += 1
+                print(t.move_xy(0, 0))
                 elapsed = time.monotonic() - start
                 if prompt:
                     if delay != 0 and elapsed < delay:
