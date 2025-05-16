@@ -56,24 +56,23 @@ def main(msg: 'message to display',
                     y += 1
                 print(t.move_xy(0, 0))
                 elapsed = time.monotonic() - start
-                if prompt:
-                    if delay != 0 and elapsed < delay:
-                        progress = 1 - (min(elapsed, delay) / delay)
-                        pmsg = '=' * int(progress * 40)
-                        print(t.move_xy(t.width // 2 - len(pmsg) // 2, y) + pmsg)
-                        time.sleep(.01)
-                        while True:
-                            try:
-                                q.get_nowait() # drain input queue while delayed
-                            except queue.Empty:
-                                break
-                    else:
+                if delay != 0 and elapsed < delay:
+                    progress = 1 - (min(elapsed, delay) / delay)
+                    pmsg = '=' * int(progress * 40)
+                    print(t.move_xy(t.width // 2 - len(pmsg) // 2, y) + pmsg)
+                    time.sleep(.01)
+                    while True:
                         try:
-                            if q.get_nowait() == 'y':
-                                sys.exit(0)
-                            sys.exit(1)
+                            q.get_nowait() # drain input queue while delayed
                         except queue.Empty:
-                            time.sleep(.01)
+                            break
+                if prompt:
+                    try:
+                        if q.get_nowait() == 'y':
+                            sys.exit(0)
+                        sys.exit(1)
+                    except queue.Empty:
+                        time.sleep(.01)
                 else:
                     try:
                         q.get_nowait()
